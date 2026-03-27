@@ -106,7 +106,7 @@ require"telescope".setup {
       -- displays global .bib persistently and upon selection copies entries over into 
       -- context / local file
       copyIntoLocal = true,
-      -- callbacks for the different completion event (see mappings)
+      -- callbacks for the different completion events (see mappings)
       callback_key = nil,
       callback_entry = nil,
       callback_citation = nil,
