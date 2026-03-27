@@ -43,6 +43,10 @@ local citation_trim_firstname = true
 local citation_max_auth = 2
 local user_context = false
 local user_context_fallback = true
+local callback_key = nil
+local callback_entry = nil
+local callback_citation = nil
+local callback_field = nil
 local keymaps = {
   i = {
     ["<C-e>"] = bibtex_actions.entry_append,
@@ -246,6 +250,13 @@ end
 
 local function bibtex_picker(opts)
   opts = opts or {}
+  bibtex_actions.fallback_opts = {
+    callback_key = opts.callback_key or callback_key,
+    callback_entry = opts.callback_entry or callback_entry,
+    callback_citation = opts.callback_citation or callback_citation,
+    callback_field = opts.callback_field or callback_field,
+    opts = opts
+  }
   local format_string = parse_format_string(opts)
   local context = parse_context(opts)
   local context_fallback = parse_context_fallback(opts)
@@ -330,6 +341,10 @@ return telescope.register_extension({
       or citation_trim_firstname
     citation_max_auth = ext_config.citation_max_auth or citation_max_auth
     wrap = ext_config.wrap or wrap
+    callback_key = ext_config.callback_key or callback_key
+    callback_entry = ext_config.callback_entry or callback_entry
+    callback_citation = ext_config.callback_citation or callback_citation
+    callback_field = ext_config.callback_field or callback_field
     keymaps = vim.tbl_extend("force", keymaps, ext_config.mappings or {})
   end,
   exports = {

@@ -6,12 +6,15 @@ local finders = require('telescope.finders')
 local previewers = require('telescope.previewers')
 local conf = require('telescope.config').values
 
-return {
-  key_append = function(format_string)
+local M = {}
+M.fallback_opts = {}
+
+M.key_append = function(format_string)
     return function(prompt_bufnr)
+      local selection = action_state.get_selected_entry()
       local mode = vim.api.nvim_get_mode().mode
       local entry =
-          string.format(format_string, action_state.get_selected_entry().id.name)
+          string.format(format_string, selection.id.name)
       actions.close(prompt_bufnr)
       if mode == 'i' then
         vim.api.nvim_put({ entry }, '', false, true)
@@ -19,11 +22,13 @@ return {
       else
         vim.api.nvim_put({ entry }, '', true, true)
       end
+      if M.fallback_opts.callback_key then M.fallback_opts.callback_key(selection) end
     end
-  end,
+  end
 
-  entry_append = function(prompt_bufnr)
-    local entry = action_state.get_selected_entry().id.content
+M.entry_append = function(prompt_bufnr)
+    local selection = action_state.get_selected_entry()
+    local entry = selection.id.content
     actions.close(prompt_bufnr)
     local mode = vim.api.nvim_get_mode().mode
     if mode == 'i' then
@@ -32,11 +37,13 @@ return {
     else
       vim.api.nvim_put(entry, '', true, true)
     end
-  end,
+    if M.fallback_opts.callback_entry then M.fallback_opts.callback_entry(selection) end
+  end
 
-  citation_append = function(citation_format, opts)
+M.citation_append = function(citation_format, opts)
     return function(prompt_bufnr)
-      local entry = action_state.get_selected_entry().id.content
+      local selection = action_state.get_selected_entry()
+      local entry = selection.id.content
       actions.close(prompt_bufnr)
       local citation = utils.format_citation(entry, citation_format, opts)
       local mode = vim.api.nvim_get_mode().mode
@@ -46,12 +53,15 @@ return {
       else
         vim.api.nvim_paste(citation, true, -1)
       end
+      if M.fallback_opts.callback_citation then M.fallback_opts.callback_citation(selection) end
     end
-  end,
+  end
 
-  field_append = function()
+M.field_append = function()
     return function(prompt_bufnr)
-      local entry = action_state.get_selected_entry().id.content
+      local opts = M.fallback_opts.opts or {}
+      local outer_selection = action_state.get_selected_entry()
+      local entry = outer_selection.id.content
       actions.close(prompt_bufnr)
       local parsed = utils.parse_entry(entry)
       pickers.new(opts, {
@@ -88,6 +98,7 @@ return {
               else
                 vim.api.nvim_put({parsed[selection[1]]}, '', true, true)
               end
+              if M.fallback_opts.callback_field then M.fallback_opts.callback_field(outer_selection) end
             end
           )
           return true
@@ -95,4 +106,5 @@ return {
       }):find()
     end
   end
-}
+
+return M
