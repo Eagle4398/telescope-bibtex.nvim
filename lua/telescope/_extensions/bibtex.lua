@@ -89,6 +89,7 @@ local function getBibFiles(dir)
 end
 
 local function initFiles()
+  getBibFiles('.')
   for _, file in pairs(user_files) do
     local p = path:new(file)
     if p:is_dir() then
@@ -99,7 +100,6 @@ local function initFiles()
       end
     end
   end
-  getBibFiles('.')
 end
 
 local function read_file(file)
