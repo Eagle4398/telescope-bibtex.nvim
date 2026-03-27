@@ -103,6 +103,14 @@ require"telescope".setup {
             ["<C-c>"] = bibtex_actions.citation_append('{{author}} ({{year}}), {{title}}.'),
           }
       },
+      -- displays global .bib persistently and upon selection copies entries over into 
+      -- context / local file
+      copyIntoLocal = true,
+      -- callbacks for the different completion event (see mappings)
+      callback_key = nil,
+      callback_entry = nil,
+      callback_citation = nil,
+      callback_field = nil,
     },
   }
 }
