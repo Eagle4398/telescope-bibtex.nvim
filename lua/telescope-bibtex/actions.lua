@@ -22,6 +22,7 @@ M.key_append = function(format_string)
       else
         vim.api.nvim_put({ entry }, '', true, true)
       end
+      if M.fallback_opts.copyIntoLocal then utils.do_copy_into_local(selection) end
       if M.fallback_opts.callback_key then M.fallback_opts.callback_key(selection) end
     end
   end
@@ -37,6 +38,7 @@ M.entry_append = function(prompt_bufnr)
     else
       vim.api.nvim_put(entry, '', true, true)
     end
+    if M.fallback_opts.copyIntoLocal then utils.do_copy_into_local(selection) end
     if M.fallback_opts.callback_entry then M.fallback_opts.callback_entry(selection) end
   end
 
@@ -53,6 +55,7 @@ M.citation_append = function(citation_format, opts)
       else
         vim.api.nvim_paste(citation, true, -1)
       end
+      if M.fallback_opts.copyIntoLocal then utils.do_copy_into_local(selection) end
       if M.fallback_opts.callback_citation then M.fallback_opts.callback_citation(selection) end
     end
   end
@@ -98,6 +101,7 @@ M.field_append = function()
               else
                 vim.api.nvim_put({parsed[selection[1]]}, '', true, true)
               end
+              if M.fallback_opts.copyIntoLocal then utils.do_copy_into_local(outer_selection) end
               if M.fallback_opts.callback_field then M.fallback_opts.callback_field(outer_selection) end
             end
           )

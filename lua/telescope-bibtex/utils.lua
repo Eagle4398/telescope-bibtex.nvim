@@ -756,4 +756,54 @@ M.get_bibkeys = function(parsed_entry)
   return bibkeys
 end
 
+M.find_local_bib = function(project_root)
+  local actions = require('telescope-bibtex.actions')
+  local current_files = actions.fallback_opts.current_files or {}
+  
+  for _, f in ipairs(current_files) do
+    if f.is_global == false then
+      return f.name
+    end
+  end
+
+  local target_bib = project_root .. "/autoreferences.bib"
+  if vim.fn.filereadable(target_bib) == 0 then
+    vim.fn.writefile({}, target_bib)
+    vim.notify("telescope-bibtex: Created new local bib file " .. target_bib, vim.log.levels.INFO)
+  end
+  return target_bib
+end
+
+M.do_copy_into_local = function(selection)
+  local citekey = selection.id.name
+  if type(citekey) ~= "string" then return end
+
+  if selection.id.is_global == false then
+     return
+  end
+
+  local target_bib = M.find_local_bib(project_root)
+
+  if vim.fn.filereadable(target_bib) == 1 then
+      local exists = false
+      for line in io.lines(target_bib) do
+          if line:match("^%s*@%w+%s*%{%s*" .. vim.pesc(citekey) .. "%s*,") then
+              exists = true
+              break
+          end
+      end
+      if exists then return end
+  end
+
+  local extracted_lines = selection.id.content
+  if type(extracted_lines) ~= "table" or #extracted_lines == 0 then return end
+
+  local lines_to_write = { "" }
+  for _, l in ipairs(extracted_lines) do table.insert(lines_to_write, l) end
+  vim.fn.writefile(lines_to_write, target_bib, "a")
+
+  local display_name = vim.fn.fnamemodify(target_bib, ":t")
+  vim.notify("Copied @" .. citekey .. " to " .. display_name, vim.log.levels.INFO)
+end
+
 return M
