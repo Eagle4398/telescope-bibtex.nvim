@@ -71,6 +71,8 @@ local function getContextBibFiles()
     found_files = utils.parsePandoc()
   elseif utils.isLatexFile() then
     found_files = utils.parseLatex()
+  elseif utils.isTypstFile() then
+    found_files = utils.parseTypst()
   end
   for _, file in pairs(found_files) do
     if not utils.file_present(context_files, file) then

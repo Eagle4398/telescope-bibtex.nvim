@@ -179,6 +179,34 @@ M.isPandocFile = function()
     or vim.o.filetype == 'quarto'
 end
 
+M.isTypstFile = function()
+  return vim.o.filetype == 'typst'
+end
+
+M.parseTypst = function()
+  local files = {}
+  local warned_yaml = false
+  for _, line in ipairs(M.bufferLines()) do
+    local bib_directive = line:match('#bibliography%s*%(%s*(.-)%)')
+    if bib_directive then
+      for bib in bib_directive:gmatch('"(.-)"') do
+        if bib:match('%.bib$') then
+          local rel_bib = M.extendRelativePath(bib)
+          if M.fileExists(bib) then
+            table.insert(files, bib)
+          elseif M.fileExists(rel_bib) then
+            table.insert(files, rel_bib)
+          end
+        elseif not warned_yaml and (bib:match('%.ya?ml$')) then
+          vim.notify("telescope-bibtex: A YAML bibliography was found but is not supported. Not all bibliography entries will be shown.", vim.log.levels.WARN)
+          warned_yaml = true
+        end
+      end
+    end
+  end
+  return files
+end
+
 M.parsePandoc = function()
   local files = {}
   local bibStarted = false
