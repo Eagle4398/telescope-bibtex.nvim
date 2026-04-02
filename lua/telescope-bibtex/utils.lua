@@ -135,8 +135,8 @@ M.bufferLines = function()
     return vim.api.nvim_buf_get_lines(0, 0, -1, false)
 end
 
-M.extendRelativePath = function(rel_path)
-    local base = vim.fn.expand('%:p:h')
+M.extendRelativePath = function(rel_path, base)
+    base = base or vim.fn.expand('%:p:h')
     local path_sep = vim.loop.os_uname().sysname == 'Windows' and '\\' or '/'
     return base .. path_sep .. rel_path
 end
@@ -149,26 +149,32 @@ M.isLatexFile = function()
     return vim.o.filetype == 'tex'
 end
 
-M.parseLatex = function()
+M.parseLatexFile = function(file)
+    local lines = (file == vim.api.nvim_buf_get_name(0) or file == nil) and M.bufferLines() or vim.fn.readfile(file)
+    local base = file and vim.fn.fnamemodify(file, ':p:h') or nil
     local files = {}
-    for _, line in ipairs(M.bufferLines()) do
+    for _, line in ipairs(lines) do
         local bibs = line:match('^[^%%]*\\bibliography{(%g+)}')
         local bibresource = line:match('^[^%%]*\\addbibresource{(%g+)}')
         if bibs then
             for _, bib in ipairs(M.split_str(bibs, ',')) do
-                bib = M.extendRelativePath(bib .. '.bib')
+                bib = M.extendRelativePath(bib .. '.bib', base)
                 if M.fileExists(bib) then
                     table.insert(files, bib)
                 end
             end
         elseif bibresource then
-            bibresource = M.extendRelativePath(bibresource)
+            bibresource = M.extendRelativePath(bibresource, base)
             if M.fileExists(bibresource) then
                 table.insert(files, bibresource)
             end
         end
     end
     return files
+end
+
+M.parseLatex = function()
+    return M.parseLatexFile(vim.api.nvim_buf_get_name(0))
 end
 
 M.isPandocFile = function()
@@ -183,15 +189,17 @@ M.isTypstFile = function()
     return vim.o.filetype == 'typst'
 end
 
-M.parseTypst = function()
+M.parseTypstFile = function(file)
+    local lines = (file == vim.api.nvim_buf_get_name(0) or file == nil) and M.bufferLines() or vim.fn.readfile(file)
+    local base = file and vim.fn.fnamemodify(file, ':p:h') or nil
     local files = {}
     local warned_yaml = false
-    for _, line in ipairs(M.bufferLines()) do
+    for _, line in ipairs(lines) do
         local bib_directive = line:match('#bibliography%s*%(%s*(.-)%)')
         if bib_directive then
             for bib in bib_directive:gmatch('"(.-)"') do
                 if bib:match('%.bib$') then
-                    local rel_bib = M.extendRelativePath(bib)
+                    local rel_bib = M.extendRelativePath(bib, base)
                     if M.fileExists(bib) then
                         table.insert(files, bib)
                     elseif M.fileExists(rel_bib) then
@@ -209,11 +217,17 @@ M.parseTypst = function()
     return files
 end
 
-M.parsePandoc = function()
+M.parseTypst = function()
+    return M.parseTypstFile(vim.api.nvim_buf_get_name(0))
+end
+
+M.parsePandocFile = function(file)
+    local lines = (file == vim.api.nvim_buf_get_name(0) or file == nil) and M.bufferLines() or vim.fn.readfile(file)
+    local base = file and vim.fn.fnamemodify(file, ':p:h') or nil
     local files = {}
     local bibStarted = false
     local bibYaml = 'bibliography:'
-    for _, line in ipairs(M.bufferLines()) do
+    for _, line in ipairs(lines) do
         local bibs = {}
         if bibStarted then
             local bib = line:match('- (.+)')
@@ -234,7 +248,7 @@ M.parsePandoc = function()
             bibStarted = true
         end
         for _, bib in ipairs(bibs) do
-            local rel_bibs = M.extendRelativePath(bib)
+            local rel_bibs = M.extendRelativePath(bib, base)
             local found = nil
             if M.fileExists(bib) then
                 found = bib
@@ -247,6 +261,10 @@ M.parsePandoc = function()
         end
     end
     return files
+end
+
+M.parsePandoc = function()
+    return M.parsePandocFile(vim.api.nvim_buf_get_name(0))
 end
 
 -- Replace escaped accents by proper UTF-8 char
