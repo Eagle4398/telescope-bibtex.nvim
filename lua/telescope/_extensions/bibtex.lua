@@ -82,14 +82,15 @@ local function get_context_bib_files()
     end
 end
 
-local function get_local_bib_files(dir)
+local function get_local_bib_files(dir, is_global)
+    is_global = is_global or false
     scan.scan_dir(dir, {
         depth = depth,
         search_pattern = '.*%.bib',
         on_insert = function(file)
             local p = path:new(file):absolute()
             if not utils.file_present(non_context_files, p) then
-                table.insert(non_context_files, { name = p, mtime = 0, entries = {}, is_global = false })
+                table.insert(non_context_files, { name = p, mtime = 0, entries = {}, is_global = is_global })
             end
         end,
     })
