@@ -75,7 +75,7 @@ local function get_context_bib_files()
     elseif utils.isTypstFile() then
         found_files = utils.parseTypst()
     end
-    for _, file in pairs(found_files) do
+    for _, file in pairs(found_files or {}) do
         if not utils.file_present(context_files, file) then
             table.insert(context_files, { name = file, mtime = 0, entries = {}, is_global = false })
         end

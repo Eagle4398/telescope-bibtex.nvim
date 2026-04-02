@@ -1,6 +1,14 @@
 local M = {}
 
 
+local DEBUG = os.getenv("BIBTEX_DEBUG") == "1"
+
+local function dbg(...)
+    if DEBUG then
+        print(...)
+    end
+end
+
 
 M.file_present = function(table, filename)
     for _, file in pairs(table) do
@@ -173,8 +181,74 @@ M.parseLatexFile = function(file)
     return files
 end
 
+M.extractWithRg = function(extensions, pattern)
+    local Job = require("plenary.job")
+    local results = {}
+    local cwd = vim.fn.getcwd()
+    local args = { "--vimgrep", "-e", pattern }
+    for _, ext in ipairs(extensions) do
+        table.insert(args, "-g")
+        table.insert(args, "*." .. ext)
+    end
+    table.insert(args, ".")
+    Job:new({
+        command = "rg",
+        args = args,
+        cwd = cwd,
+        on_exit = function(j, return_val)
+            if return_val == 0 then
+                for _, line in ipairs(j:result()) do
+                    local file_path, _, _, match_str = line:match("^(.-):(%d+):(%d+):(.*)$")
+                    if file_path and match_str then
+                        table.insert(results, {
+                            file = cwd .. "/" .. file_path,
+                            match = match_str
+                        })
+                    end
+                end
+            end
+        end,
+    }):sync()
+    return results
+end
+
+local function insert_unique(tbl, val)
+    for _, v in ipairs(tbl) do
+        if v == val then return end
+    end
+    table.insert(tbl, val)
+end
+
 M.parseLatex = function()
-    local files = M.parseLatexFile(vim.api.nvim_buf_get_name(0))
+    local files = {}
+    local current = M.parseLatexFile(vim.api.nvim_buf_get_name(0))
+    if current then
+        for _, bib in ipairs(current) do
+            insert_unique(files, bib)
+        end
+    end
+
+    local matches = M.extractWithRg({ "tex" }, "\\\\(bibliography|addbibresource)\\{([^}]+)\\}")
+    for _, m in ipairs(matches) do
+        if not m.match:match('^%s*%%') then
+            local content = m.match:match("\\bibliography%{(.-)%}")
+            if not content then
+                content = m.match:match("\\addbibresource%{(.-)%}")
+            end
+            if content and content ~= "" then
+                local base = vim.fn.fnamemodify(m.file, ':p:h')
+                for _, bib in ipairs(M.split_str(content, ',')) do
+                    if not bib:match('%.bib$') then
+                        bib = bib .. '.bib'
+                    end
+                    local full_bib = M.extendRelativePath(bib, base)
+                    if M.fileExists(full_bib) then
+                        insert_unique(files, full_bib)
+                    end
+                end
+            end
+        end
+    end
     if #files == 0 then
         return nil
     else
@@ -207,8 +281,10 @@ M.parseTypstFile = function(file)
                     local rel_bib = M.extendRelativePath(bib, base)
                     if M.fileExists(bib) then
                         table.insert(files, bib)
+                        break
                     elseif M.fileExists(rel_bib) then
                         table.insert(files, rel_bib)
+                        break
                     end
                 elseif not warned_yaml and (bib:match('%.ya?ml$')) then
                     vim.notify(
@@ -217,6 +293,7 @@ M.parseTypstFile = function(file)
                     warned_yaml = true
                 end
             end
+            if #files > 0 then break end
         end
     end
     if #files == 0 then
@@ -226,7 +303,40 @@ M.parseTypstFile = function(file)
 end
 
 M.parseTypst = function()
-    local files = M.parseTypstFile(vim.api.nvim_buf_get_name(0))
+    local files = {}
+    local current = M.parseTypstFile(vim.api.nvim_buf_get_name(0))
+    if current then
+        for _, bib in ipairs(current) do
+            insert_unique(files, bib)
+        end
+        if #files > 0 then return files end
+    end
+
+    local matches = M.extractWithRg({ "typ" }, 'bibliography\\s*\\(')
+    dbg(vim.inspect(matches))
+    for _, m in ipairs(matches) do
+        if not m.match:match('^%s*//') then
+            local args_str = m.match:match('bibliography%s*%((.-)%)')
+            dbg(vim.inspect(args_str))
+            if args_str then
+                for _, arg in ipairs(M.split_str(args_str, ',')) do
+                    local bib = arg:match('^%s*"(.-)"')
+                    if bib and bib:match('%.bib$') then
+                        local base = vim.fn.fnamemodify(m.file, ':p:h')
+                        local rel_bib = M.extendRelativePath(bib, base)
+                        if M.fileExists(bib) then
+                            insert_unique(files, bib)
+                        elseif M.fileExists(rel_bib) then
+                            insert_unique(files, rel_bib)
+                        end
+                    else
+                        break
+                    end
+                end
+            end
+            if #files > 0 then break end
+        end
+    end
     if #files == 0 then
         return nil
     else
@@ -280,7 +390,38 @@ M.parsePandocFile = function(file)
 end
 
 M.parsePandoc = function()
-    local files = M.parsePandocFile(vim.api.nvim_buf_get_name(0))
+    local files = {}
+    local current = M.parsePandocFile(vim.api.nvim_buf_get_name(0))
+    if current then
+        for _, bib in ipairs(current) do
+            insert_unique(files, bib)
+        end
+    end
+
+    local matches = M.extractWithRg({ "pandoc", "markdown", "md", "rmd", "quarto" },
+        'bibliography:\\s*(.*)|-\\s*(.+\\.bib)')
+    for _, m in ipairs(matches) do
+        local bib = m.match:match('bibliography:%s*(.*)')
+        if bib then
+            bib = bib:gsub('%[', ''):gsub('%]', '')
+        else
+            bib = m.match:match('-%s*(.*%.bib)')
+        end
+        if bib and bib ~= "" then
+            local base = vim.fn.fnamemodify(m.file, ':p:h')
+            for _, entry in ipairs(M.split_str(bib, ',')) do
+                entry = M.trimWhitespace(entry)
+                if entry ~= "" then
+                    local rel_bibs = M.extendRelativePath(entry, base)
+                    if M.fileExists(entry) then
+                        insert_unique(files, entry)
+                    elseif M.fileExists(rel_bibs) then
+                        insert_unique(files, rel_bibs)
+                    end
+                end
+            end
+        end
+    end
     if #files == 0 then
         return nil
     else
@@ -797,7 +938,7 @@ M.get_bibkeys = function(parsed_entry)
     return bibkeys
 end
 
-M.find_local_bib = function(project_root)
+M.find_local_bib = function()
     local actions = require('telescope-bibtex.actions')
     local current_files = actions.fallback_opts.current_files or {}
 
@@ -807,7 +948,7 @@ M.find_local_bib = function(project_root)
         end
     end
 
-    local target_bib = project_root .. "/autoreferences.bib"
+    local target_bib = "./autoreferences.bib"
     if vim.fn.filereadable(target_bib) == 0 then
         vim.fn.writefile({}, target_bib)
         vim.notify("telescope-bibtex: Created new local bib file " .. target_bib, vim.log.levels.INFO)
