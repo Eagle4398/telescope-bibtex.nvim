@@ -174,7 +174,12 @@ M.parseLatexFile = function(file)
 end
 
 M.parseLatex = function()
-    return M.parseLatexFile(vim.api.nvim_buf_get_name(0))
+    local files = M.parseLatexFile(vim.api.nvim_buf_get_name(0))
+    if #files == 0 then
+        return nil
+    else
+        return files 
+    end
 end
 
 M.isPandocFile = function()
@@ -207,18 +212,26 @@ M.parseTypstFile = function(file)
                     end
                 elseif not warned_yaml and (bib:match('%.ya?ml$')) then
                     vim.notify(
-                    "telescope-bibtex: A YAML bibliography was found but is not supported. Not all bibliography entries will be shown.",
+                        "telescope-bibtex: A YAML bibliography was found but is not supported. Not all bibliography entries will be shown.",
                         vim.log.levels.WARN)
                     warned_yaml = true
                 end
             end
         end
     end
+    if #files == 0 then
+        return nil
+    end
     return files
 end
 
 M.parseTypst = function()
-    return M.parseTypstFile(vim.api.nvim_buf_get_name(0))
+    local files = M.parseTypstFile(vim.api.nvim_buf_get_name(0))
+    if #files == 0 then
+        return nil
+    else
+        return files 
+    end
 end
 
 M.parsePandocFile = function(file)
@@ -260,11 +273,19 @@ M.parsePandocFile = function(file)
             end
         end
     end
+    if #files == 0 then
+        return nil
+    end
     return files
 end
 
 M.parsePandoc = function()
-    return M.parsePandocFile(vim.api.nvim_buf_get_name(0))
+    local files = M.parsePandocFile(vim.api.nvim_buf_get_name(0))
+    if #files == 0 then
+        return nil
+    else
+        return files 
+    end
 end
 
 -- Replace escaped accents by proper UTF-8 char
