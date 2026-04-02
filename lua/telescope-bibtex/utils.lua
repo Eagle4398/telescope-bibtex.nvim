@@ -178,7 +178,7 @@ M.parseLatex = function()
     if #files == 0 then
         return nil
     else
-        return files 
+        return files
     end
 end
 
@@ -230,7 +230,7 @@ M.parseTypst = function()
     if #files == 0 then
         return nil
     else
-        return files 
+        return files
     end
 end
 
@@ -284,7 +284,7 @@ M.parsePandoc = function()
     if #files == 0 then
         return nil
     else
-        return files 
+        return files
     end
 end
 
