@@ -1,3 +1,15 @@
+This is a custom version with some changes...
+
+- add typst file support
+- add more intelligent context recursive subdirectory .bib file scanning. (e.g. as long as neovim is in project root it should find the .bib file even if it is in some template file, or even subdirectory)\
+- added tests for such recursive scanning
+- add feature "copyIntoLocal"
+    - displays global .bib file in all contexts 
+    - upon selection of any entry within the global .bib file, insert the found entry from the global .bib file into the project specific one, and if it doesn't exist default to insertion into 'bibliography.bib' at project root
+- add callback supports for each entry selection (useful for creating custom actions after insertions) 
+
+---
+
 # telescope-bibtex
 
 Search and paste entries from `*.bib` files with [telescope.nvim](https://github.com/nvim-telescope).
