@@ -948,7 +948,7 @@ M.find_local_bib = function()
         end
     end
 
-    local target_bib = "./autoreferences.bib"
+    local target_bib = "./bibliography.bib"
     if vim.fn.filereadable(target_bib) == 0 then
         vim.fn.writefile({}, target_bib)
         vim.notify("telescope-bibtex: Created new local bib file " .. target_bib, vim.log.levels.INFO)
